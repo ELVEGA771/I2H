@@ -77,10 +77,10 @@
     {#each actions as action}
       {@const Icon = action.icon}
       <button class="flex flex-col items-center gap-2 group">
-        <span class="w-[72px] h-[72px] bg-white rounded-2xl shadow-sm border border-gray-50 flex items-center justify-center {action.bg} transition-transform group-hover:scale-105 group-active:scale-95">
+        <span class="w-18 h-18 bg-white rounded-2xl shadow-sm border border-gray-50 flex items-center justify-center {action.bg} transition-transform group-hover:scale-105 group-active:scale-95">
           <Icon size={32} class={action.color} strokeWidth={1.5} />
         </span>
-        <span class="text-xs text-center font-medium text-gray-700 leading-tight w-full break-words px-1">
+        <span class="text-xs text-center font-medium text-gray-700 leading-tight w-full wrap-break-word px-1">
           {action.label}
         </span>
       </button>
@@ -91,7 +91,7 @@
   <div class="mb-6">
     <h3 class="text-xl font-bold text-gray-900 mb-4">Mis promociones</h3>
     <div class="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory -mx-5 px-5 no-scrollbar">
-      <div class="snap-center shrink-0 w-64 h-32 rounded-2xl bg-gradient-to-r from-purple-800 to-indigo-900 flex items-center p-4 relative overflow-hidden shadow-sm">
+      <div class="snap-center shrink-0 w-64 h-32 rounded-2xl bg-linear-to-r from-purple-800 to-indigo-900 flex items-center p-4 relative overflow-hidden shadow-sm">
         <div class="z-10 text-white">
           <div class="text-4xl font-extrabold mb-0 leading-none">3</div>
           <div class="text-sm font-bold leading-tight">pagos y<br/>gana</div>
@@ -99,22 +99,22 @@
         <div class="absolute right-0 bottom-0 top-0 w-1/2 bg-white/20 blur-xl transform translate-x-1/4"></div>
       </div>
 
-      <div class="snap-center shrink-0 w-64 h-32 rounded-2xl bg-gradient-to-r from-teal-400 to-emerald-400 p-4 relative overflow-hidden shadow-sm">
+      <div class="snap-center shrink-0 w-64 h-32 rounded-2xl bg-linear-to-r from-teal-400 to-emerald-400 p-4 relative overflow-hidden shadow-sm">
         <div class="text-teal-900 font-bold text-sm mb-1">Infinix</div>
         <div class="text-white text-xl font-extrabold italic">deuna!</div>
-        <div class="absolute right-[-20px] bottom-[-20px] w-32 h-32 bg-white/20 rounded-full blur-2xl"></div>
+        <div class="absolute -right-5 -bottom-5 w-32 h-32 bg-white/20 rounded-full blur-2xl"></div>
       </div>
 
-      <div class="snap-center shrink-0 w-64 h-32 rounded-2xl bg-gradient-to-r from-pink-200 to-purple-200 p-4 relative overflow-hidden shadow-sm">
+      <div class="snap-center shrink-0 w-64 h-32 rounded-2xl bg-linear-to-r from-pink-200 to-purple-200 p-4 relative overflow-hidden shadow-sm">
         <div class="text-purple-900 font-bold text-lg">Gana<br/>entradas</div>
-        <div class="absolute right-[-20px] bottom-[-20px] w-32 h-32 bg-white/50 rounded-full blur-xl"></div>
+        <div class="absolute -right-5 -bottom-5 w-32 h-32 bg-white/50 rounded-full blur-xl"></div>
       </div>
     </div>
   </div>
 </div>
 
 <!-- Sticky QR Scanner Button -->
-<div class="fixed bottom-[72px] left-0 right-0 max-w-md mx-auto px-5 pointer-events-none z-10">
+<div class="fixed bottom-18 left-0 right-0 max-w-md mx-auto px-5 pointer-events-none z-10">
   <button class="w-full bg-[#4a148c] hover:bg-[#3a0f6c] active:bg-[#2d0b54] text-white rounded-xl py-4 flex items-center justify-center gap-3 shadow-lg font-bold text-lg transition-colors pointer-events-auto mb-2">
     <QrCode size={24} strokeWidth={2.5} />
     Escanear QR
