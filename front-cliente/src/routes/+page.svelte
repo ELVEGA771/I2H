@@ -77,9 +77,9 @@
     {#each actions as action}
       {@const Icon = action.icon}
       <button class="flex flex-col items-center gap-2 group">
-        <div class="w-[72px] h-[72px] bg-white rounded-2xl shadow-sm border border-gray-50 flex items-center justify-center {action.bg} transition-transform group-hover:scale-105 group-active:scale-95">
+        <span class="w-[72px] h-[72px] bg-white rounded-2xl shadow-sm border border-gray-50 flex items-center justify-center {action.bg} transition-transform group-hover:scale-105 group-active:scale-95">
           <Icon size={32} class={action.color} strokeWidth={1.5} />
-        </div>
+        </span>
         <span class="text-xs text-center font-medium text-gray-700 leading-tight w-full break-words px-1">
           {action.label}
         </span>
