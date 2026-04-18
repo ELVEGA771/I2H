@@ -3,7 +3,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
-RUN npm run build
+RUN npm run build && mkdir -p dist/db && cp src/db/init.sql dist/db/
 
 FROM node:22-alpine
 WORKDIR /app

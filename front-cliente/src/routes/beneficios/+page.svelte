@@ -1,247 +1,231 @@
 <script lang="ts">
-  import { ChevronRight, HelpCircle, ExternalLink, Ticket, Tag } from 'lucide-svelte';
+  import { onMount } from 'svelte';
+  import { ChevronRight, Sparkles, Store, ExternalLink } from 'lucide-svelte';
 
-  let activeTab = $state('promociones'); // 'club' | 'promociones'
+  const API = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3000';
+
+  type Merchant = {
+    id: number;
+    name: string;
+    category: string;
+    description: string;
+    is_featured: boolean;
+    sponsor_level: string;
+    loyalty_enabled: boolean;
+    reward_threshold: number | null;
+    reward_type: string | null;
+    reward_value: string | null;
+  };
+
+  let activeTab = $state<'rewards' | 'club' | 'promociones'>('rewards');
+  let merchants = $state<Merchant[]>([]);
+  let loading = $state(true);
+
+  const USER_ID = 1; // Ana García para demo
+
+  onMount(async () => {
+    try {
+      const res = await fetch(`${API}/api/merchants`);
+      const all: Merchant[] = await res.json();
+      merchants = all.filter(m => m.loyalty_enabled);
+    } catch {
+      merchants = [
+        { id: 1, name: 'Cafetería Luna',     category: 'Cafetería', description: 'El mejor café del barrio',        is_featured: true,  sponsor_level: 'premium', loyalty_enabled: true, reward_threshold: 10, reward_type: 'discount',        reward_value: '$1 de descuento' },
+        { id: 2, name: 'Barber Shop Centro', category: 'Barbería',  description: 'Cortes modernos y clásicos',      is_featured: true,  sponsor_level: 'basic',   loyalty_enabled: true, reward_threshold: 20, reward_type: 'free_product',    reward_value: 'Corte gratis' },
+        { id: 3, name: 'Panadería El Sol',   category: 'Panadería', description: 'Pan artesanal horneado cada día', is_featured: false, sponsor_level: 'none',    loyalty_enabled: true, reward_threshold: 15, reward_type: 'percentage_off',  reward_value: '20% de descuento' },
+        { id: 5, name: 'Tienda Don Jorge',   category: 'Minimarket',description: 'Todo lo que necesitas cerca',     is_featured: true,  sponsor_level: 'basic',   loyalty_enabled: true, reward_threshold: 30, reward_type: 'discount',        reward_value: '$3 de descuento' },
+      ];
+    } finally {
+      loading = false;
+    }
+  });
+
+  const categoryColors: Record<string, string> = {
+    'Cafetería':  'bg-[#fff3e0] text-[#e65100]',
+    'Barbería':   'bg-[#e8f5e9] text-[#2e7d32]',
+    'Panadería':  'bg-[#fce4ec] text-[#c62828]',
+    'Farmacia':   'bg-[#e3f2fd] text-[#1565c0]',
+    'Minimarket': 'bg-[#f3e5f5] text-[#6a1b9a]',
+  };
+
+  const categoryEmoji: Record<string, string> = {
+    'Cafetería': '☕', 'Barbería': '✂️', 'Panadería': '🥖', 'Farmacia': '💊', 'Minimarket': '🛒'
+  };
+
+  type Tab = 'rewards' | 'club' | 'promociones';
+  const setTab = (key: string) => { activeTab = key as Tab; };
+  const tabClass = (key: string) =>
+    activeTab === key ? 'font-bold text-[#1a0a2e]' : 'font-medium text-gray-400';
+
+  const rewardLabel = (type: string | null) => {
+    if (type === 'discount') return 'Descuento';
+    if (type === 'free_product') return 'Gratis';
+    if (type === 'percentage_off') return '% Off';
+    return 'Premio';
+  };
 </script>
 
 <div class="bg-white min-h-screen pb-24">
-  <!-- Header & Tabs -->
   <header class="bg-white sticky top-0 z-10 pt-12">
-    <div class="flex items-center justify-center pb-6">
+    <div class="flex items-center justify-center pb-5">
       <h1 class="text-xl font-bold text-gray-900">Beneficios</h1>
     </div>
-
     <div class="flex relative border-b border-gray-200">
-      <button
-        onclick={() => activeTab = 'club'}
-        class="relative flex-1 py-4 text-[17px] text-center transition-colors {activeTab === 'club' ? 'font-bold text-[#1a0a2e]' : 'font-medium text-gray-400'}"
-      >
-        Club Deuna
-        {#if activeTab === 'club'}
-          <div class="absolute bottom-0 left-0 right-0 h-[4px] bg-[#4a148c] rounded-t-sm"></div>
-        {/if}
-      </button>
-      <button
-        onclick={() => activeTab = 'promociones'}
-        class="relative flex-1 py-4 text-[17px] text-center transition-colors {activeTab === 'promociones' ? 'font-bold text-[#1a0a2e]' : 'font-medium text-gray-400'}"
-      >
-        Promociones
-        {#if activeTab === 'promociones'}
-          <div class="absolute bottom-0 left-0 right-0 h-[4px] bg-[#4a148c] rounded-t-sm"></div>
-        {/if}
-      </button>
+      {#each [['rewards','Rewards'], ['club','Club Deuna'], ['promociones','Promociones']] as [key, label]}
+        <button
+          onclick={() => setTab(key)}
+          class="relative flex-1 py-3 text-[15px] text-center transition-colors {tabClass(key)}"
+        >
+          {label}
+          {#if activeTab === key}
+            <div class="absolute bottom-0 left-0 right-0 h-0.75 bg-[#4a148c] rounded-t-sm"></div>
+          {/if}
+        </button>
+      {/each}
     </div>
   </header>
 
-  <div class="px-5 pt-6 space-y-8">
+  <div class="px-5 pt-5">
 
-    {#if activeTab === 'promociones'}
-      <section>
-        <h2 class="text-[19px] font-bold text-gray-900 mb-4">Destacadas del mes</h2>
-
-        <div class="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory -mx-5 px-5 no-scrollbar">
-          <div class="snap-center shrink-0 w-[260px] bg-white rounded-[20px] overflow-hidden border border-gray-100 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.1)]">
-            <div class="h-36 bg-gray-50 relative p-4 flex items-center justify-center">
-              <div class="w-[96px] h-[58px] bg-white rounded-2xl shadow-sm overflow-hidden flex items-center justify-center">
-                <img src="/imagenes/nubia_air.jpg" alt="Celular Nubia Air" class="w-auto h-auto max-w-[82px] max-h-[46px] object-contain" />
-              </div>
-              <div class="absolute bottom-2 left-2 w-14 h-14 rounded-full bg-[#b388ff] text-white flex flex-col items-center justify-center shadow-md transform rotate-[-5deg]">
-                <span class="text-[8px] font-medium leading-none mb-0.5">Lo Tienes</span>
-                <span class="text-[11px] font-extrabold italic leading-none">deuna!</span>
-              </div>
-            </div>
-            <div class="p-4 pt-3">
-              <div class="flex items-center gap-2 mb-1.5">
-                <span class="bg-[#2ecc71] text-white font-bold px-1.5 py-0.5 rounded text-[15px] leading-none">$208,9</span>
-                <span class="text-gray-500 line-through text-[15px] font-medium leading-none">$258,9</span>
-              </div>
-              <h3 class="font-semibold text-[16px] text-gray-900 leading-tight mb-1">Celular Nubia air 256GB ZTE</h3>
-              <p class="text-gray-500 text-[14px]">Recibe $50 de descuento</p>
-            </div>
+    {#if activeTab === 'rewards'}
+      <div class="animate-[fadeIn_.25s_ease-out]">
+        <div class="flex items-center gap-2 mb-5">
+          <div class="w-8 h-8 rounded-xl bg-[#eadff7] flex items-center justify-center text-[#5b2a86]">
+            <Sparkles size={17} strokeWidth={2.2} />
           </div>
-
-          <div class="snap-center shrink-0 w-[260px] bg-white rounded-[20px] overflow-hidden border border-gray-100 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.1)]">
-            <div class="h-36 bg-gray-50 relative p-4 flex items-center justify-center">
-              <img src="https://images.unsplash.com/photo-1545454675-3531b543be5d?q=80&w=400&auto=format&fit=crop" alt="Parlante" class="w-full h-full object-cover rounded-lg" />
-              <div class="absolute bottom-2 left-2 w-14 h-14 rounded-full bg-[#b388ff] text-white flex flex-col items-center justify-center shadow-md transform rotate-[-5deg]">
-                <span class="text-[8px] font-medium leading-none mb-0.5">Lo Tienes</span>
-                <span class="text-[11px] font-extrabold italic leading-none">deuna!</span>
-              </div>
-            </div>
-            <div class="p-4 pt-3">
-              <div class="flex items-center gap-2 mb-1.5">
-                <span class="bg-[#2ecc71] text-white font-bold px-1.5 py-0.5 rounded text-[15px] leading-none">$228,9</span>
-                <span class="text-gray-500 line-through text-[15px] font-medium leading-none">$278,9</span>
-              </div>
-              <h3 class="font-semibold text-[16px] text-gray-900 leading-tight mb-1">One body LG</h3>
-              <p class="text-gray-500 text-[14px]">Recibe $50 de descue...</p>
-            </div>
+          <div>
+            <h2 class="text-[18px] font-extrabold tracking-tight leading-none">Negocios con Rewards</h2>
+            <p class="text-[13px] text-gray-500 mt-0.5">Acumula puntos y gana premios</p>
           </div>
         </div>
-      </section>
 
-      <section>
-        <h2 class="text-[19px] font-bold text-gray-900 mb-4">Códigos promocionales</h2>
-        <div class="bg-[#faeff3] rounded-[28px] p-5 flex items-center justify-between relative overflow-hidden shadow-sm">
-          <div class="z-10 w-[70%]">
-            <div class="inline-block bg-[#69f0ae] text-[#004d40] text-[12px] font-extrabold px-3 py-1 rounded-full mb-3 shadow-sm">Nuevo</div>
-            <h3 class="text-[16px] font-bold text-gray-900 leading-snug mb-1">¡Introduce tus códigos aquí!</h3>
-            <p class="text-[14px] text-gray-700">Activa tus promociones ahora</p>
+        {#if loading}
+          <div class="flex justify-center pt-16">
+            <div class="w-7 h-7 rounded-full border-2 border-[#5b2a86] border-t-transparent animate-spin"></div>
           </div>
-          <div class="z-10 flex items-center justify-end w-[30%] gap-3 shrink-0">
-            <div class="w-14 h-14 bg-white rounded-xl shadow-sm border border-gray-100 flex items-center justify-center shrink-0">
-              <img src="/logos/logo_descuento.png?v=2" alt="Cupón" class="w-10 h-10 object-contain" />
+        {:else if merchants.length === 0}
+          <div class="text-center pt-16 text-gray-400">
+            <Store size={48} strokeWidth={1.5} class="mx-auto mb-3 opacity-40" />
+            <p class="text-[16px]">Pronto habrá comercios disponibles</p>
+          </div>
+        {:else}
+          <!-- Featured -->
+          {@const featured = merchants.filter(m => m.sponsor_level !== 'none')}
+          {#if featured.length}
+            <div class="mb-5">
+              <span class="text-[12px] font-bold text-[#5b2a86] bg-[#eadff7] px-2 py-1 rounded-full">⭐ Destacados</span>
+            </div>
+            <div class="flex gap-3 overflow-x-auto pb-3 -mx-5 px-5 no-scrollbar mb-6">
+              {#each featured as m}
+                <a
+                  href="/beneficios/{m.id}"
+                  class="snap-center shrink-0 w-47.5 rounded-[20px] border border-gray-100 shadow-sm bg-white overflow-hidden"
+                >
+                  <div class="h-28 bg-[#eadff7] flex items-center justify-center text-5xl">
+                    {categoryEmoji[m.category] ?? '🏪'}
+                  </div>
+                  <div class="p-3">
+                    <p class="text-[15px] font-bold leading-tight truncate">{m.name}</p>
+                    <span class={`text-[12px] font-semibold px-2 py-0.5 rounded-full mt-1 inline-block ${categoryColors[m.category] ?? 'bg-gray-100 text-gray-600'}`}>
+                      {m.category}
+                    </span>
+                    <div class="mt-2 flex items-center gap-1 text-[13px] text-[#5b2a86] font-semibold">
+                      <Sparkles size={13} strokeWidth={2.2} />
+                      <span>{rewardLabel(m.reward_type)} a los {m.reward_threshold} pts</span>
+                    </div>
+                  </div>
+                </a>
+              {/each}
+            </div>
+          {/if}
+
+          <!-- All merchants list -->
+          <h2 class="text-[17px] font-bold mb-3">Todos los comercios</h2>
+          <div class="space-y-2">
+            {#each merchants as m}
+              <a
+                href="/beneficios/{m.id}"
+                class="flex items-center gap-4 rounded-[18px] bg-white border border-gray-100 shadow-sm px-4 py-3"
+              >
+                <div class="w-12 h-12 rounded-2xl bg-[#eadff7] flex items-center justify-center text-2xl shrink-0">
+                  {categoryEmoji[m.category] ?? '🏪'}
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-[16px] font-bold leading-tight truncate">{m.name}</p>
+                  <p class="text-[13px] text-gray-500">{m.description}</p>
+                </div>
+                <div class="text-right shrink-0">
+                  <p class="text-[13px] font-semibold text-[#5b2a86]">{rewardLabel(m.reward_type)}</p>
+                  <p class="text-[12px] text-gray-400">{m.reward_threshold} pts</p>
+                </div>
+                <ChevronRight size={18} strokeWidth={2.3} class="text-gray-300 shrink-0" />
+              </a>
+            {/each}
+          </div>
+        {/if}
+      </div>
+
+    {:else if activeTab === 'promociones'}
+      <div class="animate-[fadeIn_.25s_ease-out] space-y-8">
+        <section>
+          <h2 class="text-[19px] font-bold text-gray-900 mb-4">Destacadas del mes</h2>
+          <div class="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory -mx-5 px-5 no-scrollbar">
+            <div class="snap-center shrink-0 w-65 bg-white rounded-[20px] overflow-hidden border border-gray-100 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.1)]">
+              <div class="h-36 bg-gray-50 relative p-4 flex items-center justify-center">
+                <div class="absolute bottom-2 left-2 w-14 h-14 rounded-full bg-[#b388ff] text-white flex flex-col items-center justify-center shadow-md transform rotate-[-5deg]">
+                  <span class="text-[8px] font-medium leading-none mb-0.5">Lo Tienes</span>
+                  <span class="text-[11px] font-extrabold italic leading-none">deuna!</span>
+                </div>
+                <img src="/imagenes/nubia_air.jpg" alt="Celular Nubia Air" class="w-auto h-auto max-w-20.5 max-h-11.5 object-contain" />
+              </div>
+              <div class="p-4 pt-3">
+                <div class="flex items-center gap-2 mb-1.5">
+                  <span class="bg-[#2ecc71] text-white font-bold px-1.5 py-0.5 rounded text-[15px] leading-none">$208,9</span>
+                  <span class="text-gray-500 line-through text-[15px] font-medium leading-none">$258,9</span>
+                </div>
+                <h3 class="font-semibold text-[16px] text-gray-900 leading-tight">Celular Nubia air 256GB ZTE</h3>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section>
+          <h2 class="text-[19px] font-bold text-gray-900 mb-4">Códigos promocionales</h2>
+          <div class="bg-[#faeff3] rounded-[28px] p-5 flex items-center justify-between shadow-sm">
+            <div>
+              <div class="inline-block bg-[#69f0ae] text-[#004d40] text-[12px] font-extrabold px-3 py-1 rounded-full mb-3">Nuevo</div>
+              <h3 class="text-[16px] font-bold text-gray-900">¡Introduce tus códigos aquí!</h3>
+              <p class="text-[14px] text-gray-700">Activa tus promociones ahora</p>
             </div>
             <ChevronRight size={24} strokeWidth={3} class="text-gray-900 shrink-0" />
           </div>
-        </div>
-      </section>
-
-      <section>
-        <h2 class="text-[19px] font-bold text-gray-900 mb-4">Otros</h2>
-        <div class="space-y-4">
-          <div class="bg-white rounded-[20px] overflow-hidden border border-gray-100 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.06)] flex p-2.5 gap-4 items-center">
-            <div class="w-[130px] h-[110px] rounded-[16px] bg-gradient-to-br from-[#311b92] to-[#4a148c] relative overflow-hidden shrink-0 flex items-center p-3 shadow-inner">
-              <div class="z-10 flex flex-col justify-center">
-                <span class="text-white font-black text-[32px] leading-[0.8] tracking-tighter drop-shadow-md">3</span>
-                <span class="text-white font-bold text-[11px] leading-tight mt-1">pagos y</span>
-                <span class="text-[#69f0ae] font-black text-[15px] leading-tight">gana</span>
-              </div>
-              <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop" class="absolute right-[-10px] bottom-0 w-[80px] h-[100px] object-cover object-top mask-image-bottom opacity-90 drop-shadow-lg" alt="Persona" />
-            </div>
-            <div class="flex-1 flex flex-col justify-center pr-2 py-1">
-              <div class="inline-block bg-[#388e3c] text-white text-[11px] font-bold px-2 py-0.5 rounded mb-1.5 self-start">Sorteo</div>
-              <h3 class="font-bold text-[16px] text-gray-900 leading-tight mb-1 line-clamp-1">Gana en grande</h3>
-              <p class="text-[14px] text-gray-500 leading-snug line-clamp-2">Haz 3 pagos en comercios aliados y participa por un iP...</p>
-            </div>
-          </div>
-
-          <div class="bg-white rounded-[20px] overflow-hidden border border-gray-100 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.06)] flex p-2.5 gap-4 items-center">
-            <div class="w-[130px] h-[110px] rounded-[16px] bg-[#00e5ff] relative overflow-hidden shrink-0 flex flex-col justify-between p-2 shadow-inner">
-              <div class="flex justify-between w-full px-1 pt-1 z-10">
-                <span class="text-[#004d40] font-bold text-[9px]">Infinix</span>
-                <span class="text-[#004d40] font-black text-[9px] italic">deuna!</span>
-              </div>
-              <div class="absolute inset-0 flex items-center justify-center">
-                <div class="w-16 h-16 bg-gray-300 rounded-lg transform rotate-[-15deg] shadow-lg border-2 border-gray-400 overflow-hidden">
-                  <img src="https://images.unsplash.com/photo-1598327105666-5b89351cb31b?w=100&auto=format&fit=crop" class="w-full h-full object-cover" alt="Phone" />
-                </div>
-              </div>
-              <div class="z-10 text-center w-full pb-1">
-                <span class="text-white font-black text-[13px] tracking-wide drop-shadow-md">GIVEAWAY</span>
-              </div>
-            </div>
-            <div class="flex-1 flex flex-col justify-center pr-2 py-1">
-              <div class="inline-block bg-[#388e3c] text-white text-[11px] font-bold px-2 py-0.5 rounded mb-1.5 self-start">Sorteo</div>
-              <h3 class="font-bold text-[16px] text-gray-900 leading-tight mb-1 line-clamp-1">Infinix</h3>
-              <p class="text-[14px] text-gray-500 leading-snug line-clamp-2">¡El próximo Infinix Note 60 Pro puede ser tuyo! Entra a...</p>
-            </div>
-          </div>
-
-          <div class="bg-white rounded-[20px] overflow-hidden border border-gray-100 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.06)] flex p-2.5 gap-4 items-center">
-            <div class="w-[130px] h-[110px] rounded-[16px] bg-[#d1c4e9] relative overflow-hidden shrink-0 flex items-center shadow-inner">
-              <img src="https://images.unsplash.com/photo-1503919545889-aef636e10ad4?w=100&auto=format&fit=crop" class="absolute bottom-0 left-[-5px] w-[70px] h-[90px] object-cover drop-shadow-lg" alt="Niño" />
-              <div class="relative z-10 ml-14 flex flex-col justify-center mt-2">
-                <span class="text-[#311b92] font-black text-[14px] leading-none mb-1 drop-shadow-sm">Gana $10</span>
-                <span class="text-[#311b92] font-bold text-[8px] leading-[1] drop-shadow-sm">en este regreso</span>
-                <span class="text-[#311b92] font-black text-[12px] leading-tight drop-shadow-sm">a clases</span>
-              </div>
-            </div>
-            <div class="flex-1 flex flex-col justify-center pr-2 py-1">
-              <div class="inline-block bg-[#388e3c] text-white text-[11px] font-bold px-2 py-0.5 rounded mb-1.5 self-start">Regreso a clases</div>
-              <h3 class="font-bold text-[16px] text-gray-900 leading-tight mb-1 line-clamp-1">$10 de Reembolso</h3>
-              <p class="text-[14px] text-gray-500 leading-snug line-clamp-2">Por compras superiores a $65 en comercios aliados</p>
-            </div>
-          </div>
-        </div>
-      </section>
+        </section>
+      </div>
 
     {:else}
-      <div class="animate-in fade-in duration-300">
-        <div class="bg-white rounded-[24px] border border-gray-100 shadow-[0_2px_16px_-4px_rgba(0,0,0,0.08)] p-6 mb-8 relative">
-          <div class="absolute top-5 right-5">
-            <HelpCircle size={24} class="text-gray-900" strokeWidth={2.5} />
-          </div>
-          <div class="flex items-center gap-5 mb-8 pr-6 mt-1">
-            <div class="shrink-0 flex items-center justify-center w-24 h-24">
-              <img src="/logos/Logo_club_bronze.png" alt="Nivel Bronce" class="object-contain drop-shadow-md" style="width: 88px; height: 88px;" />
-            </div>
-            <div class="pt-1">
-              <h2 class="text-[22px] font-extrabold text-gray-900 mb-1.5">Nivel Bronce</h2>
-              <p class="text-[15px] text-gray-600 leading-snug">Completa los pagos necesarios y sube tu nivel. Se actualizará a inicios del próximo mes.</p>
-            </div>
-          </div>
-          <div class="mt-4">
-            <p class="text-[14px] text-gray-600 font-medium mb-2">Este mes completaste <span class="text-[#4a148c] font-bold">0 pagos</span></p>
-            <div class="w-full h-2.5 bg-gray-100 rounded-full mb-3 overflow-hidden">
-              <div class="h-full bg-[#4a148c] rounded-full" style="width: 5%"></div>
-            </div>
-            <div class="flex justify-between items-center px-1 mt-5">
-              <div class="flex flex-col items-center">
-                <div class="w-8 h-8 flex items-center justify-center mb-1.5">
-                  <img src="/logos/Logo_club_bronze.png" alt="Bronce" class="object-contain drop-shadow-sm" style="width: 20px; height: 20px;" />
-                </div>
-                <span class="text-[12px] text-gray-500 font-medium">0</span>
-              </div>
-              <div class="flex flex-col items-center">
-                <div class="w-8 h-8 flex items-center justify-center mb-1.5">
-                  <img src="/logos/Logo_club_metal.png" alt="Metal" class="object-contain opacity-70 drop-shadow-sm" style="width: 20px; height: 20px;" />
-                </div>
-                <span class="text-[12px] text-gray-500 font-medium">5</span>
-              </div>
-              <div class="flex flex-col items-center">
-                <div class="w-8 h-8 flex items-center justify-center mb-1.5">
-                  <img src="/logos/Logo_club_oro.png" alt="Oro" class="object-contain drop-shadow-sm" style="width: 20px; height: 20px;" />
-                </div>
-                <span class="text-[12px] text-gray-500 font-medium">11</span>
-              </div>
-              <div class="flex flex-col items-center">
-                <div class="w-8 h-8 flex items-center justify-center mb-1.5">
-                  <img src="/logos/Logo_club_morado.png" alt="Morado" class="object-contain drop-shadow-sm" style="width: 20px; height: 20px;" />
-                </div>
-                <span class="text-[12px] text-gray-500 font-medium">20+</span>
-              </div>
+      <div class="animate-[fadeIn_.25s_ease-out]">
+        <div class="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 mb-6">
+          <div class="flex items-center gap-4">
+            <img src="/logos/Logo_club_bronze.png" alt="Nivel Bronce" class="w-20 h-20 object-contain" />
+            <div>
+              <h2 class="text-[20px] font-extrabold">Nivel Bronce</h2>
+              <p class="text-[14px] text-gray-500 mt-1">Completa pagos para subir de nivel</p>
             </div>
           </div>
         </div>
-
-        <button class="text-[#0056b3] text-[15px] font-medium flex items-center gap-1.5 hover:underline mb-8">
+        <button class="text-[#0056b3] text-[15px] font-medium flex items-center gap-1.5">
           ¿Cómo funciona el Club Deuna?
           <ExternalLink size={16} strokeWidth={2} />
         </button>
-
-        <div class="mt-8">
-          <h3 class="text-[20px] font-extrabold text-gray-900 mb-6">Mis beneficios de Nivel Bronce</h3>
-          <div class="space-y-2">
-            <div class="flex items-center gap-5 py-5 border-b border-gray-100">
-              <div class="w-16 h-16 flex items-center justify-center shrink-0 drop-shadow-sm">
-                <img src="/logos/ruleta.png" alt="Gira y Gana" class="object-contain" style="width: 48px; height: 48px;" />
-              </div>
-              <div class="flex-1">
-                <h4 class="text-[17px] font-bold text-gray-900 mb-1">Hasta 1 giro de Gira y Gana</h4>
-                <p class="text-[15px] text-gray-500 leading-snug">Te faltan <span class="text-[#4a148c] font-medium">5 pagos</span> para tu próxima chance de ganar</p>
-              </div>
-              <ChevronRight size={24} class="text-gray-400 shrink-0" strokeWidth={2.5} />
-            </div>
-            <div class="flex items-center gap-5 py-5 border-b border-gray-100">
-              <div class="w-16 h-16 flex items-center justify-center shrink-0 drop-shadow-sm">
-                <img src="/logos/descuento.png" alt="Combos y promociones" class="object-contain" style="width: 48px; height: 48px;" />
-              </div>
-              <div class="flex-1">
-                <h4 class="text-[17px] font-bold text-gray-900 mb-1">Combos y promociones</h4>
-                <p class="text-[15px] text-gray-500 leading-snug">Recibe descuentos, combos y promos únicas en tus negocios favoritos</p>
-              </div>
-              <ChevronRight size={24} class="text-gray-400 shrink-0" strokeWidth={2.5} />
-            </div>
-          </div>
-        </div>
       </div>
     {/if}
-
   </div>
 </div>
 
 <style>
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
 </style>
