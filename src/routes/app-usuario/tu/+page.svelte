@@ -8,8 +8,14 @@
     ChevronLeft
   } from 'lucide-svelte';
 
-  const menuItems = [
-    { label: 'Mi negocio', icon: Store },
+  type MenuItem = {
+    label: string;
+    icon: any;
+    href?: string;
+  };
+
+  const menuItems: MenuItem[] = [
+    { label: 'Mi negocio', icon: Store, href: '/app-negocios' },
     { label: 'Beneficios', icon: Gift },
     { label: 'Certificado bancario', icon: FileText },
     { label: 'Ayuda', icon: Users },
@@ -55,10 +61,18 @@
     <div class="bg-white rounded-[32px] shadow-sm border border-gray-100/50 p-2 pb-6">
       <div class="flex flex-col px-4 pt-2">
         {#each menuItems as item, index}
-          <button class="flex items-center gap-4 py-[22px] group w-full text-left {index !== menuItems.length - 1 ? 'border-b border-gray-100/80' : ''}">
-            <svelte:component this={item.icon} size={26} strokeWidth={1.75} class="text-gray-800" />
-            <span class="text-[17px] font-medium text-gray-800 flex-1">{item.label}</span>
-          </button>
+          {@const Icon = item.icon}
+          {#if item.href}
+            <a href={item.href} class="flex items-center gap-4 py-[22px] group w-full text-left {index !== menuItems.length - 1 ? 'border-b border-gray-100/80' : ''}">
+              <Icon size={26} strokeWidth={1.75} class="text-gray-800" />
+              <span class="text-[17px] font-medium text-gray-800 flex-1">{item.label}</span>
+            </a>
+          {:else}
+            <button class="flex items-center gap-4 py-[22px] group w-full text-left {index !== menuItems.length - 1 ? 'border-b border-gray-100/80' : ''}">
+              <Icon size={26} strokeWidth={1.75} class="text-gray-800" />
+              <span class="text-[17px] font-medium text-gray-800 flex-1">{item.label}</span>
+            </button>
+          {/if}
         {/each}
       </div>
       
