@@ -23,6 +23,8 @@ CREATE TABLE IF NOT EXISTS loyalty_programs (
   reward_type VARCHAR(30) NOT NULL, -- discount, free_product, percentage_off
   reward_value VARCHAR(100) NOT NULL,
   terms TEXT NOT NULL DEFAULT 'Valido para compras presenciales. Reward de un solo uso.',
+  business_category VARCHAR(60) NOT NULL DEFAULT 'Cafeteria',
+  reward_tiers JSONB NOT NULL DEFAULT '[]'::jsonb,
   active BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -31,6 +33,8 @@ CREATE TABLE IF NOT EXISTS loyalty_programs (
 ALTER TABLE loyalty_programs
   ADD COLUMN IF NOT EXISTS campaign_name VARCHAR(100) NOT NULL DEFAULT 'Programa Rewards',
   ADD COLUMN IF NOT EXISTS terms TEXT NOT NULL DEFAULT 'Valido para compras presenciales. Reward de un solo uso.',
+  ADD COLUMN IF NOT EXISTS business_category VARCHAR(60) NOT NULL DEFAULT 'Cafeteria',
+  ADD COLUMN IF NOT EXISTS reward_tiers JSONB NOT NULL DEFAULT '[]'::jsonb,
   ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 CREATE TABLE IF NOT EXISTS users (
@@ -63,11 +67,19 @@ CREATE TABLE IF NOT EXISTS rewards (
   user_id INT REFERENCES users(id),
   merchant_id INT REFERENCES merchants(id),
   loyalty_program_id INT REFERENCES loyalty_programs(id),
+  tier_id VARCHAR(100),
+  reward_title VARCHAR(150),
+  points_spent INT NOT NULL DEFAULT 0,
   status VARCHAR(20) DEFAULT 'unlocked', -- unlocked, redeemed, expired
   qr_code VARCHAR(255) UNIQUE,
   unlocked_at TIMESTAMPTZ DEFAULT NOW(),
   redeemed_at TIMESTAMPTZ
 );
+
+ALTER TABLE rewards
+  ADD COLUMN IF NOT EXISTS tier_id VARCHAR(100),
+  ADD COLUMN IF NOT EXISTS reward_title VARCHAR(150),
+  ADD COLUMN IF NOT EXISTS points_spent INT NOT NULL DEFAULT 0;
 
 -- Normalize old demo rows that were inserted with mojibake before this migration.
 UPDATE merchants SET name = 'Cafetería Luna', category = 'Cafetería', description = 'El mejor café del barrio', loyalty_enabled = true WHERE id = 1;
@@ -148,6 +160,31 @@ UNION ALL
   SELECT 5, 'Vecino Frecuente', 1, 30, 'discount', '$3 de descuento en compras mayores a $10', 'Válido para compras presenciales.'
   WHERE NOT EXISTS (SELECT 1 FROM loyalty_programs WHERE merchant_id = 5);
 
+UPDATE loyalty_programs
+SET points_per_dollar = 100,
+    reward_threshold = CASE WHEN reward_threshold < 100 THEN reward_threshold * 100 ELSE reward_threshold END,
+    business_category = CASE
+      WHEN merchant_id = 2 THEN 'Peluqueria/Barberia'
+      WHEN merchant_id = 3 THEN 'Panaderia'
+      WHEN merchant_id = 5 THEN 'Tienda'
+      ELSE 'Cafeteria'
+    END,
+    reward_tiers = CASE
+      WHEN merchant_id = 1 THEN '[{"id":"cafe-500","points":500,"title":"Cafe gratis"},{"id":"cafe-1000","points":1000,"title":"Combo desayuno"},{"id":"cafe-2000","points":2000,"title":"Postre gratis"}]'::jsonb
+      WHEN merchant_id = 2 THEN '[{"id":"barber-500","points":500,"title":"Lavado de pelo gratis"},{"id":"barber-1000","points":1000,"title":"Corte gratis"},{"id":"barber-2000","points":2000,"title":"Producto de belleza gratis"}]'::jsonb
+      WHEN merchant_id = 3 THEN '[{"id":"pan-500","points":500,"title":"Pan dulce gratis"},{"id":"pan-1000","points":1000,"title":"20% de descuento"},{"id":"pan-2000","points":2000,"title":"Combo familiar"}]'::jsonb
+      WHEN merchant_id = 5 THEN '[{"id":"tienda-500","points":500,"title":"Snack gratis"},{"id":"tienda-1000","points":1000,"title":"$3 de descuento"},{"id":"tienda-2000","points":2000,"title":"Canasta basica mini"}]'::jsonb
+      ELSE reward_tiers
+    END,
+    updated_at = NOW()
+WHERE reward_tiers = '[]'::jsonb OR points_per_dollar <> 100 OR reward_threshold < 100;
+
+UPDATE loyalty_programs
+SET reward_threshold = COALESCE((reward_tiers->0->>'points')::INT, reward_threshold),
+    reward_value = COALESCE(NULLIF(reward_tiers->0->>'title', ''), reward_value),
+    updated_at = NOW()
+WHERE jsonb_array_length(reward_tiers) > 0;
+
 WITH ranked_programs AS (
   SELECT id,
          ROW_NUMBER() OVER (PARTITION BY merchant_id ORDER BY active DESC, created_at DESC, id DESC) AS row_number
@@ -173,11 +210,11 @@ UNION ALL
 
 -- Ana tiene 8 puntos en Cafetería Luna (cerca de desbloquear)
 INSERT INTO user_points (user_id, merchant_id, points_balance, total_points_earned) VALUES
-  (1, 1, 8,  8),
-  (1, 2, 5,  5),
-  (2, 1, 10, 10),
-  (2, 3, 3,  3),
-  (3, 5, 18, 18)
+  (1, 1, 800,  800),
+  (1, 2, 500,  500),
+  (2, 1, 1000, 1000),
+  (2, 3, 300,  300),
+  (3, 5, 1800, 1800)
 ON CONFLICT (user_id, merchant_id) DO UPDATE
   SET points_balance = EXCLUDED.points_balance,
       total_points_earned = EXCLUDED.total_points_earned;

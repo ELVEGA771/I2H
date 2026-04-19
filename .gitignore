@@ -13,6 +13,7 @@ dist-web
 # OS
 .DS_Store
 Thumbs.db
+*.log
 
 # Env
 .env

@@ -12,7 +12,13 @@
       "bundler": "metro"
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Permitir a DeUna escanear codigos QR de pago."
+        }
+      ]
     ]
   }
 }

@@ -19,6 +19,8 @@ router.get('/:id/points', async (req, res) => {
 			        lp.reward_value,
 			        lp.terms,
 			        lp.points_per_dollar,
+			        lp.business_category,
+			        lp.reward_tiers,
 			        r.id AS reward_id,
 			        r.status AS reward_status,
 			        r.qr_code
