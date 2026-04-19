@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "DeUna Cliente",
+    "slug": "deuna-cliente-expo",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-font"
+    ]
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "DeUna Negocio",
+    "slug": "deuna-negocio-expo",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Permitir a DeUna Negocio escanear QR de rewards."
+        }
+      ]
+    ]
+  }
+}

@@ -1,42 +1,35 @@
-# sv
+# Deuna Rewards
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+Demo de rewards para negocios y clientes.
 
-## Creating a project
+## Estructura
 
-If you're seeing this, you've probably already done this step. Congrats!
+- `back`: API Express/Postgres para comercios, campañas, puntos, rewards y canje por QR.
+- `app-cliente-expo`: app Expo del cliente.
+- `app-negocio-expo`: app Expo del negocio.
+- `pitch`: presentación HTML.
 
-```sh
-# create a new project
-npx sv create my-app
+Los frontends Svelte anteriores fueron retirados.
+
+## Docker Compose
+
+Docker Compose sirve las apps Expo como web builds estáticos:
+
+```bash
+docker compose up --build
 ```
 
-To recreate this project with the same configuration:
+Puertos:
 
-```sh
-# recreate this project
-npx sv@0.15.1 create --template minimal --types ts --add tailwindcss="plugins:none" --install npm fintech-app
+- API: `http://localhost:3000`
+- Cliente Expo web: `http://localhost:5173`
+- Negocio Expo web: `http://localhost:5174`
+
+Para probar desde un teléfono en la misma Wi-Fi, construye pasando la IP LAN del computador:
+
+```bash
+$env:EXPO_PUBLIC_API_URL="http://TU_IP_LAN:3000"
+docker compose up --build
 ```
 
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```sh
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
-
-## Building
-
-To create a production version of your app:
-
-```sh
-npm run build
-```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+Expo Go nativo no corre dentro del compose; para eso usa `npx expo start --clear --host lan` dentro de cada app Expo.

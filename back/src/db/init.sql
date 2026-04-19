@@ -17,13 +17,21 @@ CREATE TABLE IF NOT EXISTS merchants (
 CREATE TABLE IF NOT EXISTS loyalty_programs (
   id SERIAL PRIMARY KEY,
   merchant_id INT REFERENCES merchants(id) ON DELETE CASCADE,
+  campaign_name VARCHAR(100) NOT NULL DEFAULT 'Programa Rewards',
   points_per_dollar INT NOT NULL DEFAULT 1,
   reward_threshold INT NOT NULL DEFAULT 10,
   reward_type VARCHAR(30) NOT NULL, -- discount, free_product, percentage_off
   reward_value VARCHAR(100) NOT NULL,
+  terms TEXT NOT NULL DEFAULT 'Valido para compras presenciales. Reward de un solo uso.',
   active BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+ALTER TABLE loyalty_programs
+  ADD COLUMN IF NOT EXISTS campaign_name VARCHAR(100) NOT NULL DEFAULT 'Programa Rewards',
+  ADD COLUMN IF NOT EXISTS terms TEXT NOT NULL DEFAULT 'Valido para compras presenciales. Reward de un solo uso.',
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
@@ -61,30 +69,107 @@ CREATE TABLE IF NOT EXISTS rewards (
   redeemed_at TIMESTAMPTZ
 );
 
+-- Normalize old demo rows that were inserted with mojibake before this migration.
+UPDATE merchants SET name = 'Cafetería Luna', category = 'Cafetería', description = 'El mejor café del barrio', loyalty_enabled = true WHERE id = 1;
+UPDATE merchants SET name = 'Barber Shop Centro', category = 'Barbería', description = 'Cortes modernos y clásicos', loyalty_enabled = true WHERE id = 2;
+UPDATE merchants SET name = 'Panadería El Sol', category = 'Panadería', description = 'Pan artesanal horneado cada día', loyalty_enabled = true WHERE id = 3;
+UPDATE users SET name = 'Ana García' WHERE id = 1;
+UPDATE users SET name = 'Luis Martínez' WHERE id = 2;
+UPDATE users SET name = 'María Torres' WHERE id = 3;
+UPDATE loyalty_programs
+SET campaign_name = 'Cafe Lovers',
+    reward_value = '$1 de descuento en tu próxima compra',
+    terms = 'Válido en compras desde $3. Un reward por compra.',
+    updated_at = NOW()
+WHERE merchant_id = 1
+  AND campaign_name = 'Programa Rewards';
+UPDATE loyalty_programs
+SET campaign_name = 'Cortes Frecuentes',
+    terms = 'Válido de lunes a jueves con reserva previa.',
+    updated_at = NOW()
+WHERE merchant_id = 2
+  AND campaign_name = 'Programa Rewards';
+UPDATE loyalty_programs
+SET campaign_name = 'Pan de Cada Día',
+    terms = 'No acumulable con otras promociones.',
+    updated_at = NOW()
+WHERE merchant_id = 3
+  AND campaign_name = 'Programa Rewards';
+UPDATE loyalty_programs
+SET campaign_name = 'Vecino Frecuente',
+    terms = 'Válido para compras presenciales.',
+    updated_at = NOW()
+WHERE merchant_id = 5
+  AND campaign_name = 'Programa Rewards';
+
 -- ============================================================
 -- Seed data
 -- ============================================================
 
-INSERT INTO merchants (name, category, description, image_url, is_featured, sponsor_level, loyalty_enabled) VALUES
-  ('Cafetería Luna',     'Cafetería',   'El mejor café del barrio',          '/imagenes/cafeteria.png',  true,  'premium', true),
-  ('Barber Shop Centro', 'Barbería',    'Cortes modernos y clásicos',        '/imagenes/barber.png',     true,  'basic',   true),
-  ('Panadería El Sol',   'Panadería',   'Pan artesanal horneado cada día',   '/imagenes/panaderia.png',  false, 'none',    true),
-  ('Farmacia Salud',     'Farmacia',    'Medicamentos y productos de salud', '/imagenes/farmacia.png',   false, 'none',    false),
-  ('Tienda Don Jorge',   'Minimarket',  'Todo lo que necesitas cerca',       '/imagenes/tienda.png',     true,  'basic',   true)
-ON CONFLICT DO NOTHING;
+INSERT INTO merchants (name, category, description, image_url, is_featured, sponsor_level, loyalty_enabled)
+  SELECT 'Cafetería Luna', 'Cafetería', 'El mejor café del barrio', '/imagenes/cafeteria.png', true, 'premium', true
+  WHERE NOT EXISTS (SELECT 1 FROM merchants WHERE name = 'Cafetería Luna')
+UNION ALL
+  SELECT 'Barber Shop Centro', 'Barbería', 'Cortes modernos y clásicos', '/imagenes/barber.png', true, 'basic', true
+  WHERE NOT EXISTS (SELECT 1 FROM merchants WHERE name = 'Barber Shop Centro')
+UNION ALL
+  SELECT 'Panadería El Sol', 'Panadería', 'Pan artesanal horneado cada día', '/imagenes/panaderia.png', false, 'none', true
+  WHERE NOT EXISTS (SELECT 1 FROM merchants WHERE name = 'Panadería El Sol')
+UNION ALL
+  SELECT 'Farmacia Salud', 'Farmacia', 'Medicamentos y productos de salud', '/imagenes/farmacia.png', false, 'none', false
+  WHERE NOT EXISTS (SELECT 1 FROM merchants WHERE name = 'Farmacia Salud')
+UNION ALL
+  SELECT 'Tienda Don Jorge', 'Minimarket', 'Todo lo que necesitas cerca', '/imagenes/tienda.png', true, 'basic', true
+  WHERE NOT EXISTS (SELECT 1 FROM merchants WHERE name = 'Tienda Don Jorge');
 
-INSERT INTO loyalty_programs (merchant_id, points_per_dollar, reward_threshold, reward_type, reward_value) VALUES
-  (1, 1, 10, 'discount',        '$1 de descuento en tu próxima compra'),
-  (2, 1, 20, 'free_product',    'Corte gratis'),
-  (3, 1, 15, 'percentage_off',  '20% de descuento en toda la tienda'),
-  (5, 1, 30, 'discount',        '$3 de descuento en compras mayores a $10')
-ON CONFLICT DO NOTHING;
+WITH ranked_merchants AS (
+  SELECT id,
+         ROW_NUMBER() OVER (PARTITION BY name ORDER BY id) AS row_number
+  FROM merchants
+)
+UPDATE merchants m
+SET loyalty_enabled = false,
+    sponsor_level = 'none',
+    is_featured = false
+FROM ranked_merchants rm
+WHERE m.id = rm.id
+  AND rm.row_number > 1;
 
-INSERT INTO users (name, phone) VALUES
-  ('Ana García',   '0991234567'),
-  ('Luis Martínez','0997654321'),
-  ('María Torres', '0993456789')
-ON CONFLICT DO NOTHING;
+INSERT INTO loyalty_programs (merchant_id, campaign_name, points_per_dollar, reward_threshold, reward_type, reward_value, terms)
+  SELECT 1, 'Cafe Lovers', 1, 10, 'discount', '$1 de descuento en tu próxima compra', 'Válido en compras desde $3. Un reward por compra.'
+  WHERE NOT EXISTS (SELECT 1 FROM loyalty_programs WHERE merchant_id = 1)
+UNION ALL
+  SELECT 2, 'Cortes Frecuentes', 1, 20, 'free_product', 'Corte gratis', 'Válido de lunes a jueves con reserva previa.'
+  WHERE NOT EXISTS (SELECT 1 FROM loyalty_programs WHERE merchant_id = 2)
+UNION ALL
+  SELECT 3, 'Pan de Cada Día', 1, 15, 'percentage_off', '20% de descuento en toda la tienda', 'No acumulable con otras promociones.'
+  WHERE NOT EXISTS (SELECT 1 FROM loyalty_programs WHERE merchant_id = 3)
+UNION ALL
+  SELECT 5, 'Vecino Frecuente', 1, 30, 'discount', '$3 de descuento en compras mayores a $10', 'Válido para compras presenciales.'
+  WHERE NOT EXISTS (SELECT 1 FROM loyalty_programs WHERE merchant_id = 5);
+
+WITH ranked_programs AS (
+  SELECT id,
+         ROW_NUMBER() OVER (PARTITION BY merchant_id ORDER BY active DESC, created_at DESC, id DESC) AS row_number
+  FROM loyalty_programs
+)
+UPDATE loyalty_programs lp
+SET active = false,
+    updated_at = NOW()
+FROM ranked_programs rp
+WHERE lp.id = rp.id
+  AND rp.row_number > 1
+  AND lp.active = true;
+
+INSERT INTO users (name, phone)
+  SELECT 'Ana García', '0991234567'
+  WHERE NOT EXISTS (SELECT 1 FROM users WHERE phone = '0991234567')
+UNION ALL
+  SELECT 'Luis Martínez', '0997654321'
+  WHERE NOT EXISTS (SELECT 1 FROM users WHERE phone = '0997654321')
+UNION ALL
+  SELECT 'María Torres', '0993456789'
+  WHERE NOT EXISTS (SELECT 1 FROM users WHERE phone = '0993456789');
 
 -- Ana tiene 8 puntos en Cafetería Luna (cerca de desbloquear)
 INSERT INTO user_points (user_id, merchant_id, points_balance, total_points_earned) VALUES
@@ -99,15 +184,24 @@ ON CONFLICT (user_id, merchant_id) DO UPDATE
 
 -- Luis ya desbloqueó reward en Cafetería Luna
 INSERT INTO rewards (user_id, merchant_id, loyalty_program_id, status, qr_code)
-  SELECT 2, 1, 1, 'unlocked', 'QR-REWARD-2-1-DEMO'
-  WHERE NOT EXISTS (SELECT 1 FROM rewards WHERE qr_code = 'QR-REWARD-2-1-DEMO');
+  SELECT 2, 1, lp.id, 'unlocked', 'QR-REWARD-2-1-DEMO'
+  FROM loyalty_programs lp
+  WHERE lp.merchant_id = 1
+    AND lp.active = true
+    AND NOT EXISTS (SELECT 1 FROM rewards WHERE qr_code = 'QR-REWARD-2-1-DEMO')
+  ORDER BY lp.created_at DESC, lp.id DESC
+  LIMIT 1;
 
 -- Simular algunas transacciones históricas
-INSERT INTO transactions (user_id, merchant_id, amount, points_earned) VALUES
-  (1, 1, 5.00,  5),
-  (1, 1, 3.00,  3),
-  (1, 2, 5.00,  5),
-  (2, 1, 10.00, 10),
-  (2, 3, 3.00,  3),
-  (3, 5, 18.00, 18)
-ON CONFLICT DO NOTHING;
+INSERT INTO transactions (user_id, merchant_id, amount, points_earned)
+  SELECT 1, 1, 5.00,  5 WHERE NOT EXISTS (SELECT 1 FROM transactions WHERE user_id = 1 AND merchant_id = 1 AND amount = 5.00 AND points_earned = 5)
+UNION ALL
+  SELECT 1, 1, 3.00,  3 WHERE NOT EXISTS (SELECT 1 FROM transactions WHERE user_id = 1 AND merchant_id = 1 AND amount = 3.00 AND points_earned = 3)
+UNION ALL
+  SELECT 1, 2, 5.00,  5 WHERE NOT EXISTS (SELECT 1 FROM transactions WHERE user_id = 1 AND merchant_id = 2 AND amount = 5.00 AND points_earned = 5)
+UNION ALL
+  SELECT 2, 1, 10.00, 10 WHERE NOT EXISTS (SELECT 1 FROM transactions WHERE user_id = 2 AND merchant_id = 1 AND amount = 10.00 AND points_earned = 10)
+UNION ALL
+  SELECT 2, 3, 3.00,  3 WHERE NOT EXISTS (SELECT 1 FROM transactions WHERE user_id = 2 AND merchant_id = 3 AND amount = 3.00 AND points_earned = 3)
+UNION ALL
+  SELECT 3, 5, 18.00, 18 WHERE NOT EXISTS (SELECT 1 FROM transactions WHERE user_id = 3 AND merchant_id = 5 AND amount = 18.00 AND points_earned = 18);

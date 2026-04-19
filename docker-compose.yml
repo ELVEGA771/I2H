@@ -1,19 +1,21 @@
 services:
-  front-cliente:
-    build: ./front-cliente
+  app-cliente-expo:
+    build:
+      context: ./app-cliente-expo
+      args:
+        EXPO_PUBLIC_API_URL: ${EXPO_PUBLIC_API_URL:-http://localhost:3000}
     ports:
-      - "5173:3000"
-    environment:
-      - PUBLIC_API_URL=http://back:3000
+      - "5173:80"
     depends_on:
       - back
 
-  front-empresa:
-    build: ./front-empresa
+  app-negocio-expo:
+    build:
+      context: ./app-negocio-expo
+      args:
+        EXPO_PUBLIC_API_URL: ${EXPO_PUBLIC_API_URL:-http://localhost:3000}
     ports:
-      - "5174:3000"
-    environment:
-      - PUBLIC_API_URL=http://back:3000
+      - "5174:80"
     depends_on:
       - back
 
@@ -33,8 +35,6 @@ services:
 
   db:
     image: postgres:16-alpine
-    ports:
-      - "5432:5432"
     environment:
       - POSTGRES_DB=i2h
       - POSTGRES_USER=postgres
